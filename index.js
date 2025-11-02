@@ -151,7 +151,7 @@ wss.on("connection", (ws) => {
   ws.on("close", () => console.log("❌ Screen share disconnected"));
 });
 
-// ===== Start Server =====
+// ===== Start Server =====   
 dbCOnnect()
 .then(()=>{
   console.log("Database connection established ");
@@ -162,6 +162,37 @@ dbCOnnect()
   console.log("Database connection error");
   
 })
+
+
+// ------------------ Chat Save Endpoint ------------------
+app.post("/api/save-chat", async (req, res) => {
+  try {
+    const { chatId, title, messages } = req.body;
+
+    if (!chatId || !messages) {
+      return res.status(400).json({ error: "Invalid chat data" });
+    }
+
+    const Chat = mongoose.models.Chat || mongoose.model("Chat", new mongoose.Schema({
+      chatId: Number,
+      title: String,
+      messages: Array,
+      createdAt: { type: Date, default: Date.now },
+    }));
+
+    // Save or update
+    const savedChat = await Chat.findOneAndUpdate(
+      { chatId },
+      { title, messages },
+      { new: true, upsert: true }
+    );
+
+    res.json({ success: true, chat: savedChat });
+  } catch (err) {
+    console.error("Save chat error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
 
 
 app.use('/api',registerUsers);
