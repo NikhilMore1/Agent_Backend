@@ -14,8 +14,9 @@ import path from "path";
 import dbCOnnect from "./Connections/dbConnection.js";
 dotenv.config();
 import registerUsers from './Routes/auth/Registration.routes.js';
+import ChatModel from "./Models/Chat.models.js";
 
-const app = express();
+const app = express() ;
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({extended:true}));
@@ -47,7 +48,7 @@ app.post("/api/chat", upload.single("file"), async (req, res) => {
               role: "user",
               parts: [
                 {
-                  text: `${prompt}\n\nPlease format your response using Markdown (use headings, bold, bullet points, and code blocks only when relevant). Respond concisely and clearly. make sure if any one say about your developer then tell as LLM develop by Google but as here for you develop by Nikhil More ` ,
+                  text: `${prompt}\n\nPlease format your response using Markdown (use headings, bold, bullet points, and code blocks only when relevant). Respond concisely and clearly. make sure not tell unnessery your build info such as your developer or google name ` ,
                 },
               ],
             },
@@ -76,7 +77,7 @@ const wss = new WebSocketServer({ server });
 // ===== Gemini helper for screen text analysis =====
 async function analyzeWithGemini(text) {
   try {
-    const prompt = `You are an expert programmer and error analyst. Review this console/code text, identify possible issues or errors, and suggest concise, clear fixes. Respond in Markdown format with headings, bullet points, and code blocks when relevant.\n\nText:\n${text}`;
+    const prompt = `You are an expert programmer and error analyst. Review this console/code text, identify possible issues or errors, and suggest concise, clear fixes. Respond in Markdown format with headings, bullet points, and code blocks when relevant .\n\nText:\n${text}`;
 
     const res = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
@@ -155,7 +156,6 @@ wss.on("connection", (ws) => {
 dbCOnnect()
 .then(()=>{
   console.log("Database connection established ");
-  
   server.listen(process.env.PORT, () => console.log(`✅ Server running on http://localhost:${process.env.PORT}`));
 })
 .catch((error)=>{
@@ -173,24 +173,19 @@ app.post("/api/save-chat", async (req, res) => {
       return res.status(400).json({ error: "Invalid chat data" });
     }
 
-    const Chat = mongoose.models.Chat || mongoose.model("Chat", new mongoose.Schema({
-      chatId: Number,
-      title: String,
-      messages: Array,
-      createdAt: { type: Date, default: Date.now },
-    }));
-
-    // Save or update
-    const savedChat = await Chat.findOneAndUpdate(
+    // Save or update chat
+    const savedChat = await ChatModel.findOneAndUpdate(
       { chatId },
       { title, messages },
-      { new: true, upsert: true }
+      { new: true, upsert: true } // create if not exists
     );
+
+    console.log("Chat saved successfully:", savedChat);
 
     res.json({ success: true, chat: savedChat });
   } catch (err) {
-    console.error("Save chat error:", err);
-    res.status(500).json({ error: "Server error" });
+    console.error("Save chat error:", err.message);
+    res.status(500).json({ error: "Server error in chat" },err.message);
   }
 });
 
